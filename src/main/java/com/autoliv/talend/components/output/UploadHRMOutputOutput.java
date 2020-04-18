@@ -7,6 +7,9 @@ import java.io.Serializable;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.autoliv.talend.components.datastore.CustomDatastore;
+import com.bms.utils.ExcelTools;
+import com.bms.utils.PivotTools;
 import org.talend.sdk.component.api.component.Icon;
 import org.talend.sdk.component.api.component.Version;
 import org.talend.sdk.component.api.configuration.Option;
@@ -27,11 +30,12 @@ import com.autoliv.talend.components.service.AutolivEtlService;
 public class UploadHRMOutputOutput implements Serializable {
     private final UploadHRMOutputOutputConfiguration configuration;
     private final AutolivEtlService service;
-
+    private final PivotTools pivottools;
     public UploadHRMOutputOutput(@Option("configuration") final UploadHRMOutputOutputConfiguration configuration,
                           final AutolivEtlService service) {
         this.configuration = configuration;
         this.service = service;
+        pivottools = new PivotTools(configuration.getFileName(),configuration.getSheetName());
     }
 
     @PostConstruct
@@ -54,6 +58,10 @@ public class UploadHRMOutputOutput implements Serializable {
         // this is the method allowing you to handle the input(s) and emit the output(s)
         // after some custom logic you put here, to send a value to next element you can use an
         // output parameter and call emit(value).
+        pivottools.createSheet();
+
+        pivottools.getDataFromRecord(defaultInput);
+
     }
 
     @AfterGroup
@@ -67,5 +75,30 @@ public class UploadHRMOutputOutput implements Serializable {
         // this is the symmetric method of the init() one,
         // release potential connections you created or data you cached
         // Note: if you don't need it you can delete it
+        try {
+
+            //exceltools.printHeader(-1);
+
+            if(configuration.getColumnFormat() != null ) {
+                if (!configuration.getColumnFormat().isEmpty()) {
+                    for (CustomDatastore.ColumnFormats object : configuration.getColumnFormat()) {
+                        pivottools.setColumnFormat(object.Name, object.Ordered);
+                    }
+                }
+            }
+            pivottools.printHeaderBySchema(this.configuration.getConfig(),-1);
+
+            pivottools.printDatarowBySchema(this.configuration.getConfig(),-1);
+            if(this.configuration.getAutoSizeColumn()) {
+                pivottools.writeExcel(configuration.getFileName(),true);
+                pivottools.reloadFile();
+                pivottools.setAutoSizeCol();
+            }
+            //exceltools.printDatarow(-1);
+            pivottools.writeExcel(configuration.getFileName(),true);
+            pivottools.clearData();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -29,6 +29,27 @@ public class PivotTools {
     public boolean setHeaderRowHeight = true;
     public boolean setHeaderTextCenter = true;
 
+    public static void setColumnFormat(String colName,int formatNum){
+        formatColumns.put(colName,formatNum);
+    }
+
+    private static int colCount = 0;
+    private static int rowCount = 0;
+    private static int intHeaderRow = 0;
+    private static int intDataRow = 0;
+    private static int globalColIndex = 0;
+
+    private static Record dataRows;
+    private static Row row;
+    private static java.util.Map<String,Object> globalColumns = new java.util.HashMap<String,Object>();
+    private static java.util.Map<String,Object> formatColumns = new java.util.HashMap<String,Object>();
+    private java.util.Map<String, rowData> rsRows = new java.util.HashMap<String, rowData>();
+
+    private static CellStyle lHeaderStyle = null;
+    private static CellStyle lDetailsStyle = null;
+    public static short shortCurrencyFormat = 0;
+    public static short shortQtyFormat = 0;
+
     public PivotTools(String fileName){
         this.lFileName = fileName;
         fileInstanced = new File(this.lFileName);
@@ -45,6 +66,7 @@ public class PivotTools {
             sheet = wb.createSheet(lSheetName);
         }
     }
+
     public void reloadFile(){
         if(this.lFileName.isEmpty()) return;
         if(wb == null) return;
@@ -98,14 +120,6 @@ public class PivotTools {
             sheet = wb.createSheet(lSheetName);
         }
     }
-    public PivotTools(){
-
-    }
-    public void writeExcel(OutputStream outputStream) throws Exception {
-        wb.write(outputStream);
-
-    }
-
     public void writeExcel(String fileName, boolean createDir) throws Exception {
         System.out.print("\b\b\b\b Save File : " + fileName + "\r\n");
         if (createDir) {
@@ -168,6 +182,7 @@ public class PivotTools {
             e.printStackTrace();
         }
     }
+
     public void createSheet(){
 
         this.sheet = wb.getSheet(this.lSheetName);
@@ -218,16 +233,6 @@ public class PivotTools {
         setHeaderRowHeight = true;
         setHeaderTextCenter = true;
     }
-    public static void setColumnFormat(String colName,int formatNum){
-        formatColumns.put(colName,formatNum);
-    }
-    private static int colCount = 0;
-    private static int rowCount = 0;
-    private static Record dataRows;
-    private static Row row;
-    private static java.util.Map<String,Object> globalColumns = new java.util.HashMap<String,Object>();
-    private static java.util.Map<String,Object> formatColumns = new java.util.HashMap<String,Object>();
-    private static int globalColIndex = 0;
 
     public static class rowData {
         public java.util.Map<String,Object> rsColumns = new java.util.HashMap<String,Object>();
@@ -242,7 +247,7 @@ public class PivotTools {
             addGlobalColumn(colName);
         }
     }
-    private java.util.Map<String, rowData> rsRows = new java.util.HashMap<String, rowData>();
+
     public static void addGlobalColumn(String colName){
         if(globalColumns.get(colName) == null){
             globalColumns.put(colName,globalColIndex++);
@@ -262,8 +267,7 @@ public class PivotTools {
         rowCount++;
         System.out.print("\b\b\b\b Count Rows: "+rowCount+"\r");
     }
-    private static int intHeaderRow = 0;
-    private static int intDataRow = 0;
+
     public void printHeader(int atRow){
         int colIndex = 0;
         if(atRow >= 0 ){
@@ -315,10 +319,13 @@ public class PivotTools {
             intDataRow = intHeaderRow + 1;
         }
         int numLoop = rowCount;
+
         for(int index = 0;index < numLoop;index++){
             rowData data =(rowData) rsRows.get(String.valueOf(index));
             colIndex=0;
+
             row = this.sheet.createRow(intDataRow++);
+            System.out.println("Print Row: " + data.rsColumns.size());
             for (String key: SchemaList){
                 whiteDetails( data.rsColumns.get(key),colIndex++,key);
             }
@@ -334,8 +341,7 @@ public class PivotTools {
         }
          */
     }
-    CellStyle lHeaderStyle = null;
-    CellStyle lDetailsStyle = null;
+
     private void workwithData(Schema.Entry entry) {
         String cName = entry.getName();
         String cType = entry.getType().name();
@@ -403,8 +409,7 @@ public class PivotTools {
 
     }
 
-    public short shortCurrencyFormat = 0;
-    public short shortQtyFormat = 0;
+
     public void setCurrencyFormat(Cell cell){
         if(shortCurrencyFormat == 0){
             shortCurrencyFormat = wb.getCreationHelper().createDataFormat().getFormat("#,##0.00");

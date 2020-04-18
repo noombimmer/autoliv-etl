@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.autoliv.talend.components.dataset.CustomDataset;
 
+import com.autoliv.talend.components.datastore.CustomDatastore;
 import org.talend.sdk.component.api.configuration.Option;
 import org.talend.sdk.component.api.configuration.ui.layout.GridLayout;
 import org.talend.sdk.component.api.configuration.ui.widget.Structure;
@@ -40,9 +41,8 @@ public class NameListOutputOutputConfiguration implements Serializable {
     private List<String> config;
 
     @Option
-
     @Documentation("TODO fill the documentation for this parameter")
-    private List<ColumnFormats> ColumnFormat;
+    private List<CustomDatastore.ColumnFormats> ColumnFormat;
 
     @Option
     @Documentation("TODO fill the documentation for this parameter")
@@ -88,11 +88,12 @@ public class NameListOutputOutputConfiguration implements Serializable {
         return this;
     }
 */
-    public List<ColumnFormats> getColumnFormat() {
+    public List<CustomDatastore.ColumnFormats> getColumnFormat() {
+
         return ColumnFormat;
     }
 
-    public NameListOutputOutputConfiguration setColumnFormat(List<ColumnFormats> ColumnFormat) {
+    public NameListOutputOutputConfiguration setColumnFormat(List<CustomDatastore.ColumnFormats> ColumnFormat) {
         this.ColumnFormat = ColumnFormat;
         return this;
     }
@@ -105,27 +106,14 @@ public class NameListOutputOutputConfiguration implements Serializable {
         this.AutoSizeColumn = AutoSizeColumn;
         return this;
     }
-    public static class ColumnFormats{
-        @Option
-        @Documentation("")
-        public String Name;
-
-        @Option
-        @Documentation("")
-        public int Ordered;
-        public ColumnFormats setValue(String Name,int Ordered){
-            this.Name = Name;
-            this.Ordered = Ordered;
-            return this;
-        }
-    }
-    public void updateSchemaToList(){
-        if(config.isEmpty()){
+    public void updateSchemaToList(List<String> schemaList){
+        if(schemaList.isEmpty()){
             return;
         }
         int colIndex = 0;
-        for(String colName: config){
-            ColumnFormat.add((new ColumnFormats()).setValue(colName,colIndex++));
+        for(String colName: schemaList){
+            ColumnFormat.add((new CustomDatastore.ColumnFormats()).setValue(colName,colIndex++));
         }
     }
+
 }

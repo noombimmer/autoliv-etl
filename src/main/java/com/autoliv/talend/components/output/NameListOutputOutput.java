@@ -7,6 +7,7 @@ import java.io.Serializable;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import com.autoliv.talend.components.datastore.CustomDatastore;
 import com.bms.utils.ExcelTools;
 import org.talend.sdk.component.api.component.Icon;
 import org.talend.sdk.component.api.component.Version;
@@ -79,7 +80,7 @@ public class NameListOutputOutput implements Serializable {
 
             if(configuration.getColumnFormat() != null ) {
                 if (!configuration.getColumnFormat().isEmpty()) {
-                    for (NameListOutputOutputConfiguration.ColumnFormats object : configuration.getColumnFormat()) {
+                    for (CustomDatastore.ColumnFormats object : configuration.getColumnFormat()) {
                         exceltools.setColumnFormat(object.Name, object.Ordered);
                     }
                 }
