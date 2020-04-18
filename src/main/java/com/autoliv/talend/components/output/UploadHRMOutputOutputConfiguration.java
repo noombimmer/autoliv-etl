@@ -80,10 +80,30 @@ public class UploadHRMOutputOutputConfiguration implements Serializable {
     private List<CustomDatastore.totalColumn> GrandTotalTempColumn;
 
 
+    public boolean getGrandTotalColumn() {
+        return GrandTotalColumn;
+    }
+
 
     public List<String>  getConfig() {
         return config;
     }
+
+    public List<CustomDatastore.totalColumn> getGroupTotalColumn(){
+        return GroupTotalColumn;
+    };
+    public List<CustomDatastore.totalColumn> getGroupTotalEmpColumn(){
+        return GroupTotalEmpColumn;
+    };
+    public List<CustomDatastore.totalColumn> getGroupTotalTempColumn(){
+        return GroupTotalTempColumn;
+    };
+    public List<CustomDatastore.totalColumn> getGrandTotalEmpColumn(){
+        return GrandTotalEmpColumn;
+    };
+    public List<CustomDatastore.totalColumn> getGrandTotalTempColumn(){
+        return GrandTotalTempColumn;
+    };
 
     public CustomDataset getDataset() {
         return dataset;

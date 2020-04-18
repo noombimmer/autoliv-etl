@@ -1,8 +1,13 @@
 package com.bms.utils;
 
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.IndexedColorMap;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openxmlformats.schemas.drawingml.x2006.main.STColorSchemeIndex;
 import org.talend.sdk.component.api.record.Record;
 import org.talend.sdk.component.api.record.Schema;
 
@@ -22,12 +27,16 @@ public class PivotTools {
     private boolean appendWorkbook = false;
     private boolean appendSheet = false;
     private boolean recalculateFormula = false;
+    public boolean activeGroupTotal = false;
+    public boolean activeRenameColumn = false;
 
     public boolean setHeaderColor = true;
     public boolean setHeaderBorder = true;
     public boolean setHeaderBold = true;
     public boolean setHeaderRowHeight = true;
     public boolean setHeaderTextCenter = true;
+    public boolean setGrandTotal = false;
+    private static boolean isRequireFormatStyle = false;
 
     public static void setColumnFormat(String colName,int formatNum){
         formatColumns.put(colName,formatNum);
@@ -43,13 +52,44 @@ public class PivotTools {
     private static Row row;
     private static java.util.Map<String,Object> globalColumns = new java.util.HashMap<String,Object>();
     private static java.util.Map<String,Object> formatColumns = new java.util.HashMap<String,Object>();
-    private java.util.Map<String, rowData> rsRows = new java.util.HashMap<String, rowData>();
+    private static java.util.Map<String, rowData> rsRows = new java.util.HashMap<String, rowData>();
+
+    private static java.util.Map<String,Object> GrandTotalVal = new java.util.HashMap<String,Object>();
+    private static java.util.Map<String,Object> GrandTotalEmpVal = new java.util.HashMap<String,Object>();
+    private static java.util.Map<String,Object> GrandTotalTempVal = new java.util.HashMap<String,Object>();
+
+    private static java.util.Map<String,Object> GroupTotalVal = new java.util.HashMap<String,Object>();
+    private static java.util.Map<String,Object> GroupTotalEmpVal = new java.util.HashMap<String,Object>();
+    private static java.util.Map<String,Object> GroupTotalTempVal = new java.util.HashMap<String,Object>();
+
+    public static java.util.Map<String,Object> GroupTotalCol = new java.util.HashMap<String,Object>();
+    public static java.util.Map<String,Object> columnRename = new java.util.HashMap<String,Object>();
+    public static java.util.Map<String,Object> rowAppend = new java.util.HashMap<String,Object>();
 
     private static CellStyle lHeaderStyle = null;
     private static CellStyle lDetailsStyle = null;
+
+    private static CellStyle lDetailsGrandTotalStyle = null;
+    private static CellStyle lDetailsGrandTotalEmpStyle = null;
+    private static CellStyle lDetailsGrandTotalTempStyle = null;
+
+    private static CellStyle lDetailsGroupTotalStyle = null;
+    private static CellStyle lDetailsGroupTotalEmpStyle = null;
+    private static CellStyle lDetailsGroupTotalTempStyle = null;
+
+    private static CellStyle lDetailsStyleCenter = null;
+    private static CellStyle lDetailsStyleLeft = null;
+    private static CellStyle lDetailsStyleRight = null;
+
+
     public static short shortCurrencyFormat = 0;
     public static short shortQtyFormat = 0;
+    public static short shortSingleDigit= 0;
 
+    private  static Font fnt = null;
+    private static String lastCut = null;
+    private static boolean groupOverflow = false;
+    private static XSSFColor colorCode = null;
     public PivotTools(String fileName){
         this.lFileName = fileName;
         fileInstanced = new File(this.lFileName);
@@ -208,10 +248,23 @@ public class PivotTools {
         intHeaderRow = 0;
         intDataRow = 0;
         row = null;
+
         globalColumns.clear();
         formatColumns.clear();
         rsRows.clear();
         localSchemaList.clear();
+
+        GrandTotalVal.clear();
+        GrandTotalEmpVal.clear();
+        GrandTotalTempVal.clear();
+
+        GroupTotalVal.clear();
+        GroupTotalEmpVal.clear();
+        GroupTotalTempVal.clear();
+
+        GroupTotalCol.clear();
+        columnRename.clear();
+
         globalColIndex=0;
         lHeaderStyle =null;
         lDetailsStyle = null;
@@ -232,6 +285,21 @@ public class PivotTools {
         setHeaderBold = true;
         setHeaderRowHeight = true;
         setHeaderTextCenter = true;
+
+        lDetailsStyleCenter = null;
+        lDetailsStyleLeft = null;
+        lDetailsStyleRight = null;
+
+        lDetailsGrandTotalStyle = null;
+        lDetailsGrandTotalEmpStyle = null;
+        lDetailsGrandTotalTempStyle = null;
+
+        lDetailsGroupTotalStyle = null;
+        lDetailsGroupTotalEmpStyle = null;
+        lDetailsGroupTotalTempStyle = null;
+
+        activeRenameColumn = false;
+        activeGroupTotal = false;
     }
 
     public static class rowData {
@@ -249,6 +317,7 @@ public class PivotTools {
     }
 
     public static void addGlobalColumn(String colName){
+
         if(globalColumns.get(colName) == null){
             globalColumns.put(colName,globalColIndex++);
         }
@@ -264,8 +333,9 @@ public class PivotTools {
 
         arrayRec.forEach(this::workwithData);
         //arrayRec.get(0).getName();
+
         rowCount++;
-        System.out.print("\b\b\b\b Count Rows: "+rowCount+"\r");
+        //System.out.print("\b\b\b\b Count Rows: "+rowCount+"\r");
     }
 
     public void printHeader(int atRow){
@@ -291,7 +361,12 @@ public class PivotTools {
             if(row == null){
                 row = this.sheet.createRow(intHeaderRow);
             }
-            whiteHeader(key,colIndex++);
+            if(activeRenameColumn){
+                String strName = this.columnRename.get(key) == null ? key: String.valueOf(this.columnRename.get(key));
+                whiteHeader(strName, colIndex++);
+            }else {
+                whiteHeader(key, colIndex++);
+            }
         }
     }
 
@@ -324,11 +399,30 @@ public class PivotTools {
             rowData data =(rowData) rsRows.get(String.valueOf(index));
             colIndex=0;
 
-            row = this.sheet.createRow(intDataRow++);
-            System.out.println("Print Row: " + data.rsColumns.size());
+            if(rowAppend.get(String.valueOf(index)) != null){
+                intDataRow++;
+                System.out.println("Skip At " + intDataRow + ", " + (String)rowAppend.get(String.valueOf(index)));
+                row = this.sheet.createRow(intDataRow++);
+            }else{
+                row = this.sheet.createRow(intDataRow++);
+            }
+
             for (String key: SchemaList){
                 whiteDetails( data.rsColumns.get(key),colIndex++,key);
+
             }
+        }
+
+        if(setGrandTotal){
+            colIndex=0;
+            isRequireFormatStyle = true;
+            for (String key: SchemaList){
+                //System.out.println(key + " : " + GrandTotalVal.get(key));
+                String value = GrandTotalVal.get(key) == null ? "": String.valueOf(GrandTotalVal.get(key));
+                whiteDetails( value,colIndex++,key);
+
+            }
+            isRequireFormatStyle = false;
         }
         /*
         for(String intRowNum:rsRows.keySet()){
@@ -346,9 +440,6 @@ public class PivotTools {
         String cName = entry.getName();
         String cType = entry.getType().name();
         Object cValue =null;
-        if(cName.contentEquals("Row")){
-            System.out.println("Data Type: " + cType.toUpperCase());
-        }
         switch (cType.toUpperCase()){
             case "STRING":
                 cValue = dataRows.getString(cName);
@@ -377,6 +468,30 @@ public class PivotTools {
         }
 
         ((rowData)rsRows.get(String.valueOf(rowCount))).addColumn(cName,cValue);
+        if(setGrandTotal) {
+            double tempvalue = 0.0;
+            try{
+                tempvalue = Double.parseDouble(String.valueOf(cValue));
+                appendGrandTotal(cName,tempvalue);
+            }catch(Exception e){
+                tempvalue = 0.0;
+            }
+
+        }
+        if(((String)GroupTotalCol.get("GroupCut")).equalsIgnoreCase(cName)){
+            if(lastCut != null) {
+                if (lastCut.equalsIgnoreCase(String.valueOf(cValue))) {
+                    groupOverflow = false;
+                } else {
+                    groupOverflow = true;
+                    System.out.println("RowCount: " + String.valueOf(rowCount) + " : cValue: " + cValue + ", " + lastCut);
+                    rowAppend.put(String.valueOf(rowCount),lastCut);
+                    lastCut = String.valueOf(cValue);
+                }
+            }else{
+                lastCut = String.valueOf(cValue);
+            }
+        }
         /*
         if(rowCount == 0){
             whiteHeader(cName);
@@ -386,6 +501,19 @@ public class PivotTools {
         */
 
         colCount++;
+
+    }
+
+    public void appendGrandTotal(String colName,Double value){
+        //System.out.println("Append " + colName + " value: " + String.valueOf(value));
+        double tempValue = 0.0;
+        if(GrandTotalVal.get(colName)  != null){
+            tempValue = (double)GrandTotalVal.get(colName)  + value;
+        }else{
+            tempValue = value;
+        }
+        //double tempValue = GrandTotalVal.get(colName) == null? 0.0 : (double) GrandTotalVal.get(colName);
+        GrandTotalVal.put(colName,tempValue);
 
     }
     public void setBorder(Cell cell){
@@ -409,6 +537,48 @@ public class PivotTools {
 
     }
 
+    public void setGrandTotalStyle(Cell cell){
+        if(lDetailsGroupTotalStyle == null){
+            lDetailsGroupTotalStyle = wb.createCellStyle();
+            lDetailsGroupTotalStyle.cloneStyleFrom(cell.getCellStyle());
+        }
+        CellStyle stl=lDetailsGroupTotalStyle;
+        //XSSFColor colorCode = null;
+        if(colorCode == null ) {
+            try {
+                colorCode = new XSSFColor(Hex.decodeHex("a8d08d"), null);
+                System.out.println("Color1: " + colorCode.getIndex());
+                colorCode.setRGB(Hex.decodeHex("a8d08d"));
+                System.out.println("Color2: " + colorCode.getIndex());
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+        }
+        if(colorCode != null) {
+            stl.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+            stl.setFillBackgroundColor(IndexedColors.GREEN.getIndex());
+            stl.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        }
+        if(fnt == null){
+            fnt = wb.createFont();
+            fnt.setBold(true);
+            stl.setFont(fnt);
+        }
+        cell.setCellStyle(stl);
+
+    }
+    public void setTextDelailAlign(Cell cell,HorizontalAlignment textAlign){
+
+
+        if(lDetailsStyleCenter == null){
+            lDetailsStyleCenter = wb.createCellStyle();
+            lDetailsStyleCenter.cloneStyleFrom(lDetailsStyle);
+        }
+        CellStyle stl = lDetailsStyleCenter;
+        stl.setAlignment(textAlign);
+        cell.setCellStyle(stl);
+
+    }
 
     public void setCurrencyFormat(Cell cell){
         if(shortCurrencyFormat == 0){
@@ -432,7 +602,19 @@ public class PivotTools {
         stl.setDataFormat(shortQtyFormat);
         cell.setCellStyle(stl);
     }
+    public void setSingleDigit(Cell cell){
 
+        if(shortSingleDigit == 0){
+            shortSingleDigit = wb.getCreationHelper().createDataFormat().getFormat("#,##0.0");
+        }
+        if(lDetailsStyle == null){
+            lDetailsStyle = wb.createCellStyle();
+        }
+        CellStyle stl=lDetailsStyle;
+        stl.setDataFormat(shortSingleDigit);
+        cell.setCellStyle(stl);
+
+    }
     public void whiteHeader(String strText){
         Cell cell = row.createCell(colCount);
         cell.setCellValue(strText);
@@ -440,7 +622,10 @@ public class PivotTools {
         if(lHeaderStyle == null) {
             lHeaderStyle = wb.createCellStyle();
 
-            Font fnt = wb.createFont();
+            if(fnt == null){
+                fnt = wb.createFont();
+            }
+            //Font fnt = wb.createFont();
             if(this.setHeaderBold) fnt.setBold(true);
             if(this.setHeaderBold && this.setHeaderColor)fnt.setColor(IndexedColors.WHITE.getIndex());
             lHeaderStyle.setFont(fnt);
@@ -463,7 +648,9 @@ public class PivotTools {
         if(lHeaderStyle == null) {
             lHeaderStyle = wb.createCellStyle();
 
-            Font fnt = wb.createFont();
+            if(fnt == null){
+                fnt = wb.createFont();
+            }
             if(this.setHeaderBold) fnt.setBold(true);
             if(this.setHeaderBold && this.setHeaderColor)fnt.setColor(IndexedColors.WHITE.getIndex());
             lHeaderStyle.setFont(fnt);
@@ -494,7 +681,7 @@ public class PivotTools {
     }
     public void whiteDetails(Object objectValue,int colIndex,String colName){
         Cell cell = row.createCell(colIndex);
-
+        //System.out.println("Print Row: " + String.valueOf(objectValue));
         setBorder(cell);
         if(!formatColumns.isEmpty()) {
             int formatNum = (int) (formatColumns.get(colName) != null ?formatColumns.get(colName) :0 ) ;
@@ -517,13 +704,38 @@ public class PivotTools {
                     //e.printStackTrace();
                 }
             }else if (formatNum == 4) {
-                this.setCurrencyFormat(cell);
-                cell.setCellValue((double)objectValue);
-            }else{
-                cell.setCellValue((String)objectValue);
-            }
-        }
+                this.setSingleDigit(cell);
+                double tempValue=0.0;
+                try {
+                    tempValue = Double.parseDouble(String.valueOf(objectValue)) ;
+                }catch (Exception e){
+                    tempValue = 0.0;
+                }
 
+                cell.setCellValue(tempValue);
+            }else if (formatNum == 5) {
+                this.setSingleDigit(cell);
+                double tempValue=0.0;
+                try {
+                    tempValue = Double.parseDouble(String.valueOf(objectValue)) ;
+                }catch (Exception e){
+                    tempValue = 0.0;
+                }
+                if(tempValue > 0 ) {
+                    cell.setCellValue(tempValue);
+                }else{
+                    cell.setCellValue("-");
+                    setTextDelailAlign(cell,HorizontalAlignment.CENTER);
+                }
+            }else{
+                cell.setCellValue(String.valueOf(objectValue));
+            }
+        }else{
+            cell.setCellValue(String.valueOf(objectValue));
+        }
+        if(isRequireFormatStyle){
+            setGrandTotalStyle(cell);
+        }
     }
 
 }

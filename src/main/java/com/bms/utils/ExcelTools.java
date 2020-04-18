@@ -509,8 +509,10 @@ public class ExcelTools {
                     e.printStackTrace();
                 }
             }else{
-                cell.setCellValue((String)objectValue);
+                cell.setCellValue(String.valueOf(objectValue));
             }
+        }else{
+            cell.setCellValue(String.valueOf(objectValue));
         }
 
     }

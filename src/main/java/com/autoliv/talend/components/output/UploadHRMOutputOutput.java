@@ -43,6 +43,28 @@ public class UploadHRMOutputOutput implements Serializable {
         // this method will be executed once for the whole component execution,
         // this is where you can establish a connection for instance
         // Note: if you don't need it you can delete it
+        if(configuration.getGrandTotalColumn()){
+            pivottools.setGrandTotal = true;
+        }
+        if(configuration.getGroupTotalColumn() != null){
+            if(!configuration.getGroupTotalColumn().isEmpty()){
+                for(CustomDatastore.totalColumn item:configuration.getGroupTotalColumn()){
+                    if(item.ColFormat == 0){
+                        pivottools.GroupTotalCol.put("GroupCut",item.ColName);
+                        pivottools.GroupTotalCol.put("GroupSuffix",item.ColPrefix);
+                        pivottools.activeGroupTotal = true;
+                    }else if(item.ColFormat == 1){
+                        pivottools.columnRename.put(item.ColName,item.ColPrefix);
+                        pivottools.activeRenameColumn = true;
+                    }else if(item.ColFormat == 2){
+                        pivottools.GroupTotalCol.put("GroupCodeTile",item.ColName);
+                    }else if(item.ColFormat == 3){
+                        pivottools.GroupTotalCol.put("GroupCodeDescription",item.ColName);
+                    }
+
+                }
+            }
+        }
     }
 
     @BeforeGroup
