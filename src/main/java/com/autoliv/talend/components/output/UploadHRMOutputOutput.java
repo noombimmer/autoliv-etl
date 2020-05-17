@@ -3,6 +3,7 @@ package com.autoliv.talend.components.output;
 import static org.talend.sdk.component.api.component.Icon.IconType.CUSTOM;
 
 import java.io.Serializable;
+import java.util.Map;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -43,9 +44,11 @@ public class UploadHRMOutputOutput implements Serializable {
         // this method will be executed once for the whole component execution,
         // this is where you can establish a connection for instance
         // Note: if you don't need it you can delete it
+        pivottools.setLocalSchemaList(this.configuration.getConfig());
         if(configuration.getGrandTotalColumn()){
             pivottools.setGrandTotal = true;
         }
+
         if(configuration.getGroupTotalColumn() != null){
             if(!configuration.getGroupTotalColumn().isEmpty()){
                 for(CustomDatastore.totalColumn item:configuration.getGroupTotalColumn()){
@@ -60,8 +63,20 @@ public class UploadHRMOutputOutput implements Serializable {
                         pivottools.GroupTotalCol.put("GroupCodeTile",item.ColName);
                     }else if(item.ColFormat == 3){
                         pivottools.GroupTotalCol.put("GroupCodeDescription",item.ColName);
+                    } else if(item.ColFormat == 4){
+                        pivottools.GroupTotalCol.put("GroupCodeDescription",item.ColName);
+                    }else if(item.ColFormat == 5){
+                        pivottools.GroupTotalCol.put("GrantotalCol",item.ColName);
+                        pivottools.GroupTotalCol.put("GrantotalTitle",item.ColPrefix);
                     }
 
+                }
+            }
+        }
+        if(configuration.getColumnFormat() != null ) {
+            if (!configuration.getColumnFormat().isEmpty()) {
+                for (CustomDatastore.ColumnFormats object : configuration.getColumnFormat()) {
+                    pivottools.setColumnFormat(object.Name, object.Ordered);
                 }
             }
         }
@@ -98,19 +113,13 @@ public class UploadHRMOutputOutput implements Serializable {
         // release potential connections you created or data you cached
         // Note: if you don't need it you can delete it
         try {
-
-            //exceltools.printHeader(-1);
-
-            if(configuration.getColumnFormat() != null ) {
-                if (!configuration.getColumnFormat().isEmpty()) {
-                    for (CustomDatastore.ColumnFormats object : configuration.getColumnFormat()) {
-                        pivottools.setColumnFormat(object.Name, object.Ordered);
-                    }
-                }
+            if(pivottools.GroupTotalCol.get("GroupCut") != null){
+                pivottools.groupTotalLast();
+                pivottools.updateGroupTotal();
             }
             pivottools.printHeaderBySchema(this.configuration.getConfig(),-1);
-
             pivottools.printDatarowBySchema(this.configuration.getConfig(),-1);
+            //pivottools.printRow();
             if(this.configuration.getAutoSizeColumn()) {
                 pivottools.writeExcel(configuration.getFileName(),true);
                 pivottools.reloadFile();

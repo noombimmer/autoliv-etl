@@ -1,7 +1,10 @@
 package com.bms.utils;
 
+import com.sun.java.swing.plaf.windows.WindowsButtonListener;
+import org.apache.poi.hssf.usermodel.HSSFDataFormat;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.talend.sdk.component.api.record.Record;
 import org.talend.sdk.component.api.record.Schema;
@@ -15,8 +18,9 @@ import java.util.Map;
 public class ExcelTools {
     private static File fileInstanced = null;
     private static FileInputStream fIP = null;
-    private String lFileName;
-    private String lSheetName="Sheet1";
+    private static String lFileName;
+    private static String lSheetName="Sheet1";
+    private static String prevSheetName="";
     private static Workbook wb = null;
     private static Sheet sheet = null;
     private int rowAccessWindowSize = SXSSFWorkbook.DEFAULT_WINDOW_SIZE;// used in auto flush
@@ -29,6 +33,21 @@ public class ExcelTools {
     public boolean setHeaderBold = true;
     public boolean setHeaderRowHeight = true;
     public boolean setHeaderTextCenter = true;
+    private static int intHeaderRow = 0;
+    private static int intDataRow = 0;
+    private static int colCount = 0;
+    private static int rowCount = 0;
+    private static Record dataRows;
+    private static Row row;
+    private static java.util.Map<String,Object> globalColumns = new java.util.HashMap<String,Object>();
+    private static java.util.Map<String,Object> formatColumns = new java.util.HashMap<String,Object>();
+    //sheetObject
+    public java.util.Map<String,sheetObject> dataContents = new java.util.HashMap<String,sheetObject>();
+    private static int globalColIndex = 0;
+
+    public void addContent(sheetObject data,String name){
+        dataContents.put(name,data);
+    }
 
     public ExcelTools(String fileName){
         this.lFileName = fileName;
@@ -174,19 +193,24 @@ public class ExcelTools {
         this.sheet = wb.getSheet(this.lSheetName);
         if(this.sheet == null){
             wb.createSheet(this.lSheetName);
+            System.out.printf("Create Sheet ...%s\n",lSheetName);
+        }else{
+            System.out.printf("Open Sheet ...%s\n",lSheetName);
         }
+
     }
     public void setAutoSizeCol(){
         if(this.sheet != null){
             System.out.print("\b\b\b\b Set AutoSize Columns\r\n");
             int colIndex = 0;
             for(String key:localSchemaList){
-                System.out.println("Set column :" + key + " Autosize " + String.valueOf(colIndex));
+                //System.out.println("Set column :" + key + " Autosize " + String.valueOf(colIndex));
                 this.sheet.autoSizeColumn(colIndex++);
 
             }
         }
     }
+
     public void clearData(){
         colCount = 0;
         rowCount = 0;
@@ -194,10 +218,10 @@ public class ExcelTools {
         intHeaderRow = 0;
         intDataRow = 0;
         row = null;
-        globalColumns.clear();
-        formatColumns.clear();
-        rsRows.clear();
-        localSchemaList.clear();
+        if(globalColumns !=null) globalColumns.clear();
+        if(formatColumns !=null) formatColumns.clear();
+        if(rsRows !=null) rsRows.clear();
+        if(localSchemaList !=null) localSchemaList.clear();
         globalColIndex=0;
         lHeaderStyle =null;
         lDetailsStyle = null;
@@ -205,7 +229,7 @@ public class ExcelTools {
         File fileInstanced = null;
         FileInputStream fIP = null;
         lFileName = "";
-        lSheetName="Sheet1";
+
         wb = null;
         sheet = null;
 
@@ -218,17 +242,112 @@ public class ExcelTools {
         setHeaderBold = true;
         setHeaderRowHeight = true;
         setHeaderTextCenter = true;
+        System.out.printf("Clear Data Class ...%s\n",lSheetName);
+        lSheetName="Sheet1";
     }
     public static void setColumnFormat(String colName,int formatNum){
         formatColumns.put(colName,formatNum);
     }
-    private static int colCount = 0;
-    private static int rowCount = 0;
-    private static Record dataRows;
-    private static Row row;
-    private static java.util.Map<String,Object> globalColumns = new java.util.HashMap<String,Object>();
-    private static java.util.Map<String,Object> formatColumns = new java.util.HashMap<String,Object>();
-    private static int globalColIndex = 0;
+
+    public void setLocalSchemaList(List<String> config) {
+        localSchemaList = config;
+    }
+    public void readLastObject(){
+        if(rowCount > 0 ){
+            sheetObject data = new sheetObject();
+            data.rowCount = rowCount;
+            data.ColList = localSchemaList;
+            data.colCount = colCount;
+            data.sheet = sheet;
+            data.sheetName = lSheetName;
+            data.wb = wb;
+            data.fileName = lFileName;
+            data.formatColumns = formatColumns;
+            addContent(data,lSheetName);
+        }
+    }
+    public void resetRow() {
+        System.out.printf("WB Class ...%s\n",wb == null? "null": wb.toString());
+        System.out.printf("Sheet Class ...%s\n",sheet == null? "null": sheet.toString());
+        System.out.printf("Row Class ...%s\n",row == null? "null": row.toString());
+        System.out.printf("rowCount  ...%d\n",rowCount);
+        System.out.printf("intHeaderRow  ...%d\n",intHeaderRow);
+        System.out.printf("intDataRow  ...%d\n",intDataRow);
+        System.out.printf("colCount  ...%d\n",colCount);
+        System.out.printf("prevSheetName  ...%s\n",prevSheetName);
+
+        if(rowCount > 0 && !prevSheetName.equalsIgnoreCase(lSheetName) ){
+            sheetObject data = new sheetObject();
+            data.rowCount = rowCount;
+            data.ColList = localSchemaList;
+            data.colCount = colCount;
+            data.sheet = sheet;
+            data.sheetName = prevSheetName;
+            data.wb = wb;
+            data.fileName = lFileName;
+            addContent(data,prevSheetName);
+        }else{
+            prevSheetName = lSheetName;
+            System.out.printf("Deposite...%s\n",prevSheetName);
+        }
+        this.rowCount = 0;
+        this.intHeaderRow =0;
+        this.intDataRow = 0;
+        this.colCount = 0;
+        sheet = null;
+
+        System.out.printf("Reset Data Class ...%s\n",lSheetName);
+    }
+
+    public String getSheetName() {
+        return lSheetName;
+    }
+
+    public void resetClass() {
+        dataContents.clear();
+        dataContents = new java.util.HashMap<String,sheetObject>();
+        rowCount =0;
+    }
+
+    public void setSheet(Sheet sheet) {
+        this.sheet = sheet;
+    }
+
+    public void setwb(Workbook wb) {
+        this.wb = wb;
+    }
+
+    public void setDataContents(sheetObject data) {
+        setwb(data.wb);
+        setSheet(data.sheet);
+        rowCount = data.rowCount;
+        lSheetName = data.sheetName;
+        lFileName = data.fileName;
+
+    }
+
+    public static class sheetObject{
+        public String sheetName;
+        public int rowCount;
+        public int colCount;
+        public Workbook wb =null;
+        public Sheet sheet =null;
+        public List<String> ColList;
+        public String fileName;
+        public Map<String, Object> formatColumns;
+
+        public void setSheetName(String name){
+            sheetName = name;
+        }
+
+        public void setRowCout(int count){
+            rowCount = count;
+        }
+        public void setColCout(int count){
+            colCount = count;
+        }
+
+    }
 
     public static class rowData {
         private java.util.Map<String,Object> rsColumns = new java.util.HashMap<String,Object>();
@@ -261,10 +380,8 @@ public class ExcelTools {
         arrayRec.forEach(this::workwithData);
         //arrayRec.get(0).getName();
         rowCount++;
-        System.out.print("\b\b\b\b Count Rows: "+rowCount+"\r");
+        //System.out.print("\b\b\b\b Count Rows: "+rowCount+"\r");
     }
-    private static int intHeaderRow = 0;
-    private static int intDataRow = 0;
     public void printHeader(int atRow){
         int colIndex = 0;
         if(atRow >= 0 ){
@@ -272,7 +389,16 @@ public class ExcelTools {
         }
         for (String key: globalColumns.keySet()){
             if(row == null){
-                row = this.sheet.createRow(intHeaderRow);
+                if(sheet ==null ){
+                    if(wb == null){
+                        this.reloadFile();
+                    }
+                    this.createSheet();
+                    row = this.sheet.createRow(intHeaderRow);
+                }else{
+                    row = this.sheet.createRow(intHeaderRow);
+                }
+
             }
             whiteHeader(key,colIndex++);
         }
@@ -342,7 +468,7 @@ public class ExcelTools {
         String cType = entry.getType().name();
         Object cValue =null;
         if(cName.contentEquals("Row")){
-            System.out.println("Data Type: " + cType.toUpperCase());
+            //System.out.println("Data Type: " + cType.toUpperCase());
         }
         switch (cType.toUpperCase()){
             case "STRING":
@@ -506,15 +632,50 @@ public class ExcelTools {
                     String strValue = myFormat.format(new SimpleDateFormat("EEE MMM dd hh:mm:ss zz yyyy").parse((String) objectValue));
                     cell.setCellValue(strValue);
                 } catch (ParseException e) {
-                    e.printStackTrace();
+                    String strValue = null;
+                    try {
+                        strValue = myFormat.format(new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").parse((String) objectValue));
+                    } catch (ParseException parseException) {
+                        //parseException.printStackTrace();
+                        strValue="N/A";
+                        System.err.println(e.getMessage());
+                    }
+                    cell.setCellValue(strValue);
+
                 }
-            }else{
+            }else if(formatNum == 4){
+                if( objectValue  instanceof Double ){
+                    setSingleDigit(cell);
+                    cell.setCellValue((double)objectValue);
+                }else{
+                    try{
+                        Double valueTemp = Double.parseDouble(objectValue.toString());
+                        setSingleDigit(cell);
+                        cell.setCellValue(valueTemp);
+                    }catch(Exception e){
+                        setSingleDigit(cell);
+                        cell.setCellValue(0.00);
+                    }
+                }
+            }
+            else{
                 cell.setCellValue(String.valueOf(objectValue));
             }
         }else{
             cell.setCellValue(String.valueOf(objectValue));
         }
 
+    }
+    private XSSFCellStyle lDetailsStyleSingleDigit =null;
+    private void setSingleDigit(Cell cell) {
+
+        if(lDetailsStyleSingleDigit == null){
+            lDetailsStyleSingleDigit = (XSSFCellStyle) wb.createCellStyle();
+        }
+        lDetailsStyleSingleDigit.cloneStyleFrom(cell.getCellStyle());
+        lDetailsStyleSingleDigit.setDataFormat(wb.getCreationHelper().createDataFormat().getFormat("#,##0.0"));
+        lDetailsStyleSingleDigit.setAlignment(HorizontalAlignment.RIGHT);
+        cell.setCellStyle(lDetailsStyleSingleDigit);
     }
 
 }
