@@ -252,6 +252,7 @@ public class ExcelTools {
     public void setLocalSchemaList(List<String> config) {
         localSchemaList = config;
     }
+
     public void readLastObject(){
         if(rowCount > 0 ){
             sheetObject data = new sheetObject();
@@ -450,6 +451,7 @@ public class ExcelTools {
                 whiteDetails( data.rsColumns.get(key),colIndex++,key);
             }
         }
+
         /*
         for(String intRowNum:rsRows.keySet()){
             rowData data =(rowData) rsRows.get(intRowNum);
@@ -614,6 +616,9 @@ public class ExcelTools {
         setBorder(cell);
 
     }
+    private final SimpleDateFormat myFormat1 = new SimpleDateFormat("dd-MMM-yyyy");
+    private final SimpleDateFormat myFormat2 = new SimpleDateFormat("EEE MMM dd hh:mm:ss zz yyyy");
+    private final SimpleDateFormat myFormat3 = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
     public void whiteDetails(Object objectValue,int colIndex,String colName){
         Cell cell = row.createCell(colIndex);
 
@@ -627,14 +632,18 @@ public class ExcelTools {
                 this.setCurrencyFormat(cell);
                 cell.setCellValue((double)objectValue);
             }else if (formatNum == 3) {
-                SimpleDateFormat myFormat = new SimpleDateFormat("dd-MMM-yyyy");
+                SimpleDateFormat myFormat = myFormat1;
                 try {
-                    String strValue = myFormat.format(new SimpleDateFormat("EEE MMM dd hh:mm:ss zz yyyy").parse((String) objectValue));
-                    cell.setCellValue(strValue);
+                    if(objectValue != null ) {
+                        String strValue = myFormat.format(myFormat2.parse((String) objectValue));
+
+                    }else{
+                        cell.setCellValue("");
+                    }
                 } catch (ParseException e) {
                     String strValue = null;
                     try {
-                        strValue = myFormat.format(new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").parse((String) objectValue));
+                        strValue = myFormat.format(myFormat3.parse((String) objectValue));
                     } catch (ParseException parseException) {
                         //parseException.printStackTrace();
                         strValue="N/A";

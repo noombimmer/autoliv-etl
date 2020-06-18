@@ -93,20 +93,20 @@ public class NameListOutputOutput implements Serializable {
             System.out.printf("Release ...with data [%s]\n",data.sheetName);
             System.out.printf("Release ...Rows [%d]\n",data.rowCount);
             System.out.printf("Release ...Cols [%d]\n",data.colCount);
-
-            exceltools.setDataContents(data);
-            exceltools.printHeaderBySchema(data.ColList,-1);
-            exceltools.printDatarowBySchema(data.ColList,-1);
             try {
+                exceltools.setDataContents(data);
+                exceltools.printHeaderBySchema(data.ColList,-1);
+                exceltools.printDatarowBySchema(data.ColList,-1);
                 if (this.configuration.getAutoSizeColumn()) {
                     exceltools.writeExcel(configuration.getFileName(), true);
                     exceltools.reloadFile();
                     exceltools.setAutoSizeCol();
-
                 }
                 exceltools.writeExcel(configuration.getFileName(),true);
                 exceltools.clearData();
             }catch (Exception e) {
+                System.out.printf("Component Error  : %s\n",e.getMessage());
+                System.out.printf("Can not save file : %s\n",configuration.getFileName());
                 e.printStackTrace();
             }
         }
