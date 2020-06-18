@@ -64,7 +64,7 @@ public class UploadHRMOutputOutput implements Serializable {
                     }else if(item.ColFormat == 3){
                         pivottools.GroupTotalCol.put("GroupCodeDescription",item.ColName);
                     } else if(item.ColFormat == 4){
-                        pivottools.GroupTotalCol.put("GroupCodeDescription",item.ColName);
+                        pivottools.GroupTotalCol.put("GroupCodeTilePosition",item.ColName);
                     }else if(item.ColFormat == 5){
                         pivottools.GroupTotalCol.put("GrantotalCol",item.ColName);
                         pivottools.GroupTotalCol.put("GrantotalTitle",item.ColPrefix);
@@ -119,7 +119,7 @@ public class UploadHRMOutputOutput implements Serializable {
             }
             pivottools.printHeaderBySchema(this.configuration.getConfig(),-1);
             pivottools.printDatarowBySchema(this.configuration.getConfig(),-1);
-            //pivottools.printRow();
+            pivottools.printRow();
             if(this.configuration.getAutoSizeColumn()) {
                 pivottools.writeExcel(configuration.getFileName(),true);
                 pivottools.reloadFile();

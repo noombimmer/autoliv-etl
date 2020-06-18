@@ -162,7 +162,33 @@ public class PivotToolsHUCSUM {
             return;
         }
     }
-
+    public void setInit(String fileName, String sheetName){
+        this.lFileName = fileName;
+        ZipSecureFile.setMinInflateRatio(0);
+        if (!sheetName.isEmpty() && sheetName.length() > 0 && sheetName != null) {
+            this.lSheetName = sheetName;
+        }
+        fileInstanced = new File(this.lFileName);
+        if (fileInstanced.exists()) {
+            try {
+                this.fIP = new FileInputStream(this.fileInstanced);
+                wb = new XSSFWorkbook(fIP);
+                sheet = wb.getSheet(lSheetName);
+                if (sheet != null) {
+                    wb.removeSheetAt(wb.getSheetIndex(lSheetName));
+                    sheet = wb.createSheet(lSheetName);
+                } else {
+                    sheet = wb.createSheet(lSheetName);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            fileInstanced.delete();
+            wb = new SXSSFWorkbook(rowAccessWindowSize);
+            sheet = wb.createSheet(lSheetName);
+        }
+    }
     public PivotToolsHUCSUM(String fileName, String sheetName) {
         this.lFileName = fileName;
         ZipSecureFile.setMinInflateRatio(0);
@@ -241,10 +267,10 @@ public class PivotToolsHUCSUM {
             for (String key : localSchemaList) {
                 //HeaderGroup.put("fix_width_" + String.valueOf(colIndex),"1");
                 if(HeaderGroup.containsKey("fix_width_" + String.valueOf(colIndex))){
-                    System.out.println("fix_width_ :" + key + ", " + "fix_width_" + String.valueOf(colIndex ));
+                    //System.out.println("fix_width_ :" + key + ", " + "fix_width_" + String.valueOf(colIndex ));
                     this.sheet.setColumnWidth(colIndex,2000);
                 }else {
-                    System.out.println("Set column :" + key + " Autosize " + String.valueOf(colIndex ));
+                    //System.out.println("Set column :" + key + " Autosize " + String.valueOf(colIndex ));
                     this.sheet.autoSizeColumn(colIndex,true);
                 }
                 colIndex++;
@@ -264,26 +290,25 @@ public class PivotToolsHUCSUM {
         globalColumns.clear();
         formatColumns.clear();
         rsRows.clear();
-        localSchemaList.clear();
+        if(localSchemaList != null ) localSchemaList.clear();
 
-        GrandTotalVal.clear();
-        GrandTotalEmpVal.clear();
-        GrandTotalTempVal.clear();
+        if(GrandTotalVal != null ) GrandTotalVal.clear();
+        if(GrandTotalEmpVal != null )GrandTotalEmpVal.clear();
+        if(GrandTotalTempVal != null )GrandTotalTempVal.clear();
 
-        GroupTotalVal.clear();
-        GroupTotalEmpVal.clear();
-        GroupTotalTempVal.clear();
+        if(GroupTotalVal != null )GroupTotalVal.clear();
+        if(GroupTotalEmpVal != null )GroupTotalEmpVal.clear();
+        if(GroupTotalTempVal != null )GroupTotalTempVal.clear();
 
-        GroupTotalCol.clear();
-        columnRename.clear();
-        rsTotalRows.clear();
+        if(GroupTotalCol != null )GroupTotalCol.clear();
+        if(columnRename != null )columnRename.clear();
+        if(rsTotalRows != null ) rsTotalRows.clear();
+        if(HeaderGroup != null) HeaderGroup.clear();
 
         globalColIndex = 0;
         lHeaderStyle = null;
         lDetailsStyle = null;
 
-        File fileInstanced = null;
-        FileInputStream fIP = null;
         lFileName = "";
         lSheetName = "Sheet1";
         wb = null;
@@ -450,31 +475,41 @@ public class PivotToolsHUCSUM {
         }
 
         for (String key : SchemaList) {
+            //System.err.printf("\r\n--Key: %s\n",key);
             String strName = "";
+
+
+            //System.err.printf("row: %s\n",row !=null?row.toString():"row is null");
             if (row == null) {
                 row = this.sheet.createRow(intHeaderRow);
             }
+            //System.err.printf("sheet: %s\n",row !=null?sheet.toString():"row is null");
+
+            //System.err.printf("NumHeaderRow: %d\n",NumHeaderRow);
             strName = key;
             if(NumHeaderRow > 1){
 
+                //System.err.printf("getHeaderGroupPrefix(strName): %s\n",getHeaderGroupPrefix(strName) ? "True":"False");
                 if(!getHeaderGroupPrefix(strName)) {
                     int localColIndex = colIndex++;
+                    //System.err.printf("activeRenameColumn: %s\n",activeRenameColumn? "True":"False");
                     if (activeRenameColumn) {
                         strName = this.columnRename.get(key) == null ? key : String.valueOf(this.columnRename.get(key));
-
                     }else{
                         strName = key;
                     }
+                    // Merge Cell Two Rows/ and Single column
                     cellMerge(strName, localColIndex, localColIndex, intHeaderRow - 1, intHeaderRow);
                 }else{
-
+                    //System.err.printf("HeaderGroup.containsKey(tempHeaderGroupName + \"_merged\"): %s\n",HeaderGroup.containsKey(tempHeaderGroupName + "_merged")? "True":"False");
                     if(!HeaderGroup.containsKey(tempHeaderGroupName + "_merged")){
-
                         int localColStart = Integer.parseInt(HeaderGroup.get(tempHeaderGroupName + "_colStart"));
                         int localColEnd = Integer.parseInt(HeaderGroup.get(tempHeaderGroupName + "_colEnd"));
+
+                        // Merge Cell signle Row/ and multi columns
+                        //System.err.printf("%s [%d,%d],[%d,%d]\n",tempHeaderGroupName,localColStart,localColEnd,intHeaderRow -1,intHeaderRow -1);
                         cellMerge(tempHeaderGroupName, localColStart, localColEnd, intHeaderRow -1, intHeaderRow -1);
                         HeaderGroup.put(tempHeaderGroupName + "_merged","1");
-
                     }
                     strName = key;
                     HeaderGroup.put("fix_width_" + String.valueOf(colIndex),"1");
@@ -618,16 +653,16 @@ public class PivotToolsHUCSUM {
                 if (GroupTotalCol.containsKey("GrantotalCol")) {
                     if (key.matches((String) GroupTotalCol.get("GrantotalCol"))) {
                         value = (String) GroupTotalCol.get("GrantotalTitle");
-                        System.err.printf("1-value: %s \n",value);
+                        //System.err.printf("1-value: %s \n",value);
                         whiteDetails(value, colIndex++, key);
                     } else {
                         value = GrandTotalVal.get(key) == null ? "" : String.valueOf(GrandTotalVal.get(key));
-                        System.err.printf("2-value: %s \n",value);
+                        //System.err.printf("2-value: %s \n",value);
                         whiteDetails(value, colIndex++, key);
                     }
                 } else {
                     value = GrandTotalVal.get(key) == null ? "" : String.valueOf(GrandTotalVal.get(key));
-                    System.err.printf("3-value: %s \n",value);
+                    //System.err.printf("3-value: %s \n",value);
                     whiteDetails(value, colIndex++, key);
                 }
             }
@@ -667,12 +702,13 @@ public class PivotToolsHUCSUM {
 
         //setHeaderGroupColumn();
         int colIndex =0;
+        //if(HeaderGroup != null)HeaderGroup.clear();
         for(String key:localSchemaList){
             setHeaderGroupColumn(key,colIndex++);
         }
     }
     public void groupTotalLast() {
-        System.out.println("groupTotalLast-rowCount :" + rowCount + ", lastCut : " + lastCut);
+        //System.out.println("groupTotalLast-rowCount :" + rowCount + ", lastCut : " + lastCut);
 //        String groupCode = lastGroupCode.substring(0, 3);
         String groupCode = lastCut;
 //        String groupCodeDesc = "Total " + lastGroupCode.substring(0, 3);

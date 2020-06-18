@@ -305,12 +305,13 @@ public class PivotTools {
         for (String tt : rowAppend.keySet()) {
             System.err.printf("rowAppend : %s : [%s ]\n", tt, rowAppend.get(tt).toString());
         }
+        System.err.println("------- END ------- Group List-------------");
         for (String KeyRow : rsRows.keySet()) {
-            System.err.printf("rsRows %s : [%s ]\n", KeyRow, rsRows.get(KeyRow).toString());
+            //System.err.printf("rsRows %s : [%s ]\n", KeyRow, rsRows.get(KeyRow).toString());
             if (rowAppend.containsKey(KeyRow)) {
                 System.err.printf("%s rowAppend : [%s ]\n", KeyRow, (String) rowAppend.get(KeyRow));
                 for (String key2 : rsTotalRows.get((String) rowAppend.get(KeyRow)).rsColumns.keySet()) {
-                    System.err.printf("%s : [%s ]", key2, rsTotalRows.get((String) rowAppend.get(KeyRow)).rsColumns.get(key2).toString());
+                    System.err.printf("\t%s : [%s ]\n", key2, rsTotalRows.get((String) rowAppend.get(KeyRow)).rsColumns.get(key2).toString());
                 }
                 System.err.printf("\n");
             }
@@ -357,7 +358,7 @@ public class PivotTools {
                 Object value = data.rsColumns.get(keyCol);
                 Object cValue = value;
                 if (((String) GroupTotalCol.get("GroupCodeTile")).equalsIgnoreCase(keyCol)) {
-                    lastGroupCode = String.valueOf(cValue);
+                    lastGroupCode = (String) cValue;
                 }
                 if (((String) GroupTotalCol.get("GroupCut")).equalsIgnoreCase(keyCol)) {
                     this.cutValue = cValue != null ? cValue.toString() : "";
@@ -640,14 +641,14 @@ public class PivotTools {
     }
 
     public void groupTotalLast() {
-        System.out.println("groupTotalLast-rowCount :" + rowCount + ", lastCut : " + lastCut);
-        String groupCode = lastGroupCode.substring(0, 3);
-        String groupCodeDesc = "Total " + lastGroupCode.substring(0, 3);
+
+        String groupCode = lastCut;
+        String groupCodeDesc = "Total " + lastCut;
         String GroupCutCode = groupCode;
         String groupsuffix = (String) GroupTotalCol.get("GroupSuffix");
         groupCode = groupCode + groupsuffix;
         //rowAppend.put(String.valueOf(rowCount),lastCut);
-
+        System.out.println("groupTotalLast-rowCount :" + rowCount + ", lastCut : " + lastCut + ", groupCode: " + groupCode);
 
         /** Add New Row for Emp Group Total **/
         rowAppendEmp.put(String.valueOf(rowCount), GroupCutCode + "EM");
@@ -658,7 +659,7 @@ public class PivotTools {
 
                 if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCut"))) {
                     rsTotalRows.get(GroupCutCode + "EM").addColumn(strKeyMark, "");
-                } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeTile"))) {
+                } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeTilePosition"))) {
                     rsTotalRows.get(GroupCutCode + "EM").addColumn(strKeyMark, GroupCutCode + "EM");
                 } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeDescription"))) {
                     rsTotalRows.get(GroupCutCode + "EM").addColumn(strKeyMark, groupCodeDesc + " Employed");
@@ -680,7 +681,7 @@ public class PivotTools {
 
                 if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCut"))) {
                     rsTotalRows.get(GroupCutCode + "TM").addColumn(strKeyMark, "");
-                } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeTile"))) {
+                } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeTilePosition"))) {
                     rsTotalRows.get(GroupCutCode + "TM").addColumn(strKeyMark, GroupCutCode + "TM");
                 } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeDescription"))) {
                     rsTotalRows.get(GroupCutCode + "TM").addColumn(strKeyMark, groupCodeDesc + " Temporaries");
@@ -702,7 +703,7 @@ public class PivotTools {
 
                 if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCut"))) {
                     rsTotalRows.get(groupCode).addColumn(strKeyMark, "");
-                } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeTile"))) {
+                } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeTilePosition"))) {
                     rsTotalRows.get(groupCode).addColumn(strKeyMark, groupCode);
                 } else if (strKeyMark.equalsIgnoreCase((String) GroupTotalCol.get("GroupCodeDescription"))) {
                     rsTotalRows.get(groupCode).addColumn(strKeyMark, groupCodeDesc);
@@ -779,6 +780,7 @@ public class PivotTools {
         double tempValue = 0;
 
         if (formatColumns.containsKey(key)) {
+            //System.err.println("key: " + key);
             if (GroupTotalVal != null) {
                 if (GroupTotalVal.containsKey(key)) {
                     tempValue = GroupTotalVal.get(key) + numValue;

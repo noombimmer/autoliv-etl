@@ -43,12 +43,24 @@ public class HRHCSummaryOutputOutput implements Serializable {
         // this method will be executed once for the whole component execution,
         // this is where you can establish a connection for instance
         // Note: if you don't need it you can delete it
+        pivottools.clearData();
+        pivottools.setInit(configuration.getFileName(),configuration.getSheetName());
+
         pivottools.setLocalSchemaList(this.configuration.getConfig());
         if(configuration.getGrandTotalColumn()){
             pivottools.setGrandTotal = true;
         }
         String temp_HeaderName="";
         if(configuration.getGroupTotalColumn() != null){
+
+            if(pivottools.GroupTotalCol != null){
+                pivottools.GroupTotalCol.clear();
+            }
+            pivottools.activeGroupTotal = false;
+            pivottools.activeRenameColumn = false;
+            pivottools.rowSummary = false;
+            pivottools.GroupHeader = true;
+
             if(!configuration.getGroupTotalColumn().isEmpty()){
                 for(CustomDatastore.totalColumn item:configuration.getGroupTotalColumn()){
 
@@ -183,7 +195,7 @@ public class HRHCSummaryOutputOutput implements Serializable {
             pivottools.setColumnWidth();
             //exceltools.printDatarow(-1);
             pivottools.writeExcel(configuration.getFileName(),true);
-            pivottools.clearData();
+            //pivottools.clearData();
         } catch (Exception e) {
             e.printStackTrace();
         }
